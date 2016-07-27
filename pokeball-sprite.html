@@ -1,0 +1,187 @@
+<html>
+ <head> 
+  <title>Sprites</title> 
+
+  <script type="text/javascript" src="js/jquery-3.1.0.min.js"></script>  
+  <script type="text/javascript" src="js/three.min.js"></script>
+  
+  <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+        }
+    </style> 
+ </head> 
+ <body>
+
+  <!-- Javascript code that runs our Three.js examples --> 
+  <script type="text/javascript">
+
+  $(function(){
+
+    /*global variables*/
+    var scene, camera, renderer;
+    var spotLight, hemi;
+    var SCREEN_WIDTH, SCREEN_HEIGHT;
+    var texture;
+    var material;
+    var sprite;
+    var sprite_size = 64;
+    var sprite_panels_cnt = 12;
+    var cur_sprite_panel = 1;
+
+    var grid;
+
+    function init(){
+        /*creates empty scene object and renderer*/
+        scene = new THREE.Scene();
+        
+        camera =  new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, .1, 300);
+        camera.position.x = 0;
+        camera.position.y = 10;
+        camera.position.z = 0;   
+        camera.lookAt(scene.position);
+
+        renderer = new THREE.WebGLRenderer({antialias:true});        
+        renderer.setClearColor(0x000000);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled= false;
+        renderer.shadowMapSoft = false;
+                            
+        guiControls = new function(){
+            this.SceneToConsole= function(){
+                console.log(scene);
+                console.log(camera.position.x + " X Position");
+                console.log(camera.position.y + " Y Position");
+                console.log(camera.position.z + " Z Position");
+            };
+            this.rotationX  = 0.0;
+            this.rotationY  = 0.0;
+            this.rotationZ  = 0.0;
+            
+            this.lightX = 19;
+            this.lightY = 47;
+            this.lightZ = 19;
+            this.intensity = 2.5;       
+            this.distance = 373;
+            this.angle = 1.6;
+            this.exponent = 38;
+            //this.shadow.camera.near = 34;
+            // this.shadowCamera.far = 2635;
+            // this.shadow.camera.fov = 68;
+            // this.shadow.camera.visible=false;
+            // this.shadowMapWidth=512;
+            // this.shadowMapHeight=512;
+            // this.shadowBias=0.00;
+            // this.shadowDarkness=0.11;       
+        }
+
+        hemi = new THREE.HemisphereLight(0xbbbbbb, 0x660066);
+        scene.add(hemi);
+        
+        /*adds spot light with starting parameters*/
+        spotLight = new THREE.SpotLight(0xffffff);
+        spotLight.castShadow = false;
+        spotLight.position.set (20, 35, 40);
+        spotLight.intensity = guiControls.intensity;        
+        spotLight.distance = guiControls.distance;
+        spotLight.angle = guiControls.angle;
+        spotLight.exponent = guiControls.exponent;
+
+            // spotLight.shadowCameraNear = guiControls.shadowCameraNear;
+            // spotLight.shadowCameraFar = guiControls.shadowCameraFar;
+            // spotLight.shadowCameraFov = guiControls.shadowCameraFov;
+            // spotLight.shadowCameraVisible = guiControls.shadowCameraVisible;
+            // spotLight.shadowBias = guiControls.shadowBias;
+            // spotLight.shadowDarkness = guiControls.shadowDarkness;
+        
+        scene.add(spotLight);
+          
+        grid = new THREE.GridHelper( 20, 1, 0x444444, 0x444444 );
+        scene.add(grid);
+
+        addSprite();
+        
+        document.body.appendChild( renderer.domElement );
+        
+    }
+
+    function addSprite(){
+    
+        var loader = new THREE.TextureLoader();
+        loader.setCrossOrigin( 'anonymous' );          
+
+        texture = loader.load("images/pokeballs_sprite.png");                    
+        texture.repeat.set( cur_sprite_panel / sprite_panels_cnt, 1 );
+        texture.needsUpdate = true;
+
+        material  = new THREE.SpriteMaterial({map : texture});
+
+        sprite = new THREE.Sprite( material );
+        sprite.scale.set(1, 1, 1);
+
+        scene.add( sprite );
+    }   
+  
+    function updateSprite(){
+        if (cur_sprite_panel == sprite_panels_cnt){
+            cur_sprite_panel = 1
+            texture.offset.x = cur_sprite_panel / sprite_panels_cnt;    
+        }
+        else{
+            texture.offset.x = cur_sprite_panel / sprite_panels_cnt;
+            cur_sprite_panel++;
+        }               
+    }
+    
+    var frameRate = 30;
+    var curTime;
+    var oldTime = Date.now();
+    var interval = 1000/frameRate;
+    var delta;
+
+    
+    function render() { 
+        // spotLight.position.x = guiControls.lightX;
+        // spotLight.position.y = guiControls.lightY;
+        // spotLight.position.z = guiControls.lightZ;
+        
+        sprite.position.z += 0.01;
+        sprite.position.y -= 0.05;
+        
+        material.rotation += 0.01;
+
+        curTime = Date.now();
+        delta = curTime - oldTime;
+        
+        if (delta > interval){
+            oldTime = curTime - (delta % interval);
+            updateSprite();
+        }
+    }
+    
+    function animate(){
+        requestAnimationFrame(animate);
+        render();
+        renderer.render(scene, camera);
+    }
+    
+    init();
+    animate();
+    
+    $(window).resize(function(){
+        SCREEN_WIDTH = window.innerWidth;
+        SCREEN_HEIGHT = window.innerHeight;
+        camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+        camera.updateProjectionMatrix();
+        renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+    });
+    
+}); 
+
+</script>  
+
+ </body>
+</html>
