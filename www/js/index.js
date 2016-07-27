@@ -9,6 +9,7 @@ var ball;
 var controls;
 
 var config = {
+    playAudio: true,
     simulationEnabled: true,
     showControls: false,
     showAxis: true,
@@ -57,9 +58,11 @@ function init() {
 
     buildGroundPlane();
     if (config.showHitPlane) buildHitPlane();
+    
     buildPokemonChar();
-
     buildBall();
+
+    if (config.playAudio) playAudio();
 }
 
 // build the Physijs scene, which takes the place of a THREE scene --------------------------------
@@ -351,6 +354,16 @@ var buildPokemonChar = function() {
 
     scene.add( ball );
 };
+
+// play background audio using Cordova Media plugin -----------------------------------------------
+var playAudio = function() {
+    if ( !(window.device && window.Media) ) return;
+
+    var mp3URL = "audio/POKEMON GO Theme PEAKWAVE REMIX.mp3";
+    if(device.platform.toLowerCase() === "android") mp3URL = "/android_asset/www/" + mp3URL;
+    var media = new Media(mp3URL, null, function(err) { alert('Media error\n' + err); });
+    media.play();
+}
 
 // update the physics engine and render every frame -----------------------------------------------
 var animate = function() {        
