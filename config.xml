@@ -23,4 +23,8 @@
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
+    <plugin name="cordova-plugin-media" spec="~2.3.0" />
+    <plugin name="com.ezartech.ezar.videooverlay" spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.videoOverlay" />
+    <plugin name="com.ezartech.ezar.snapshot" spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.snapshot" />
+    <plugin name="cordova-plugin-device" spec="~1.1.2" />
 </widget>

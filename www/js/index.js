@@ -2,17 +2,20 @@
 var container = document.getElementById('container');
 
 // THREE objects  ---------------------------------------------------------------------------------
-var camera, scene, renderer;
+var camera3, scene, renderer;
 var sceneW, sceneH;
 var physicsMaterial;
 var ball;
 var controls;
 
 var config = {
+    showCamera: true,
     playAudio: true,
+    playAudioRepeat: true,
     simulationEnabled: true,
     showControls: false,
-    showAxis: true,
+    showAxis: false,
+    showGroundPlane: false,
     showHitPlane: false,
     showBumperPlanes: false,
     spinBallOnHit: true,
@@ -34,25 +37,34 @@ var config = {
     ballIdleRotation: Math.PI / 15,
     ballScale: 1,
     speedX: 100,
-    speedY: 1000,
-    speedZ: -1000
+    speedY: 1000,  //1000 hit
+    speedZ: -1000 //-1000 long, -900 hit
 };
 
 var ballState = {
-    simulationRunning: false
+    simulationRunning: false,
+    simulationTicks: 0
 };
 
 // initialize the physics demo --------------------------------------------------------------------
 function init() {
+
+    if( !hasWebGL() ) {
+        alert('You don\'t seem to have WebGL, which is required for this demo.');
+        return;
+    }
+
+
     // store scene dimensions
-    sceneW = container.offsetWidth;
-    sceneH = container.offsetHeight;
+    sceneW = window.innerWidth;
+    sceneH = window.innerHeight;
 
     // build the 3d world
     buildPhysicsScene();
     buildRenderer();
     buildCamera();
     buildLights();
+
     if (config.showControls) buildControls();  //screws up camera.lookAt
     if (config.showAxis) buildAxis();
 
@@ -62,6 +74,13 @@ function init() {
     buildPokemonChar();
     buildBall();
 
+    document.addEventListener('deviceready', initCordova, false);
+
+    animate();
+}
+
+var initCordova = function() {
+    if (config.showCamera) showCamera();
     if (config.playAudio) playAudio();
 }
 
@@ -81,22 +100,22 @@ var buildPhysicsScene = function() {
 var buildRenderer = function() {
     renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
     renderer.setSize( sceneW, sceneH );
-    //renderer.setClearColor(new THREE.Color(0xCCFFFF,1.0));
+    //renderer.setClearColor(new THREE.Color(0xFFFFFF,0));
     renderer.shadowMap.enabled = true;
-    container.appendChild( renderer.domElement );
+    document.body.appendChild( renderer.domElement );
 };
 
 // build the THREE camera -------------------------------------------------------------------------
 var buildCamera = function() {
-    camera = new THREE.PerspectiveCamera( 45, sceneW / sceneH, 1, 10000 );
+    camera3 = new THREE.PerspectiveCamera( 45, sceneW / sceneH, 1, 10000 );
     
     // move camera up and back, and point it down at the center of the 3d scene        
-    camera.position.x = config.camX;
-    camera.position.y = config.camY;
-    camera.position.z = config.camZ;
+    camera3.position.x = config.camX;
+    camera3.position.y = config.camY;
+    camera3.position.z = config.camZ;
 
-    //camera.rotation.y = Math.PI / 2;
-    camera.lookAt(new THREE.Vector3(0,config.camLookY,config.camLookZ));
+    //camera3.rotation.y = Math.PI / 2;
+    camera3.lookAt(new THREE.Vector3(0,config.camLookY,config.camLookZ));
 };
 
 // add an ambient light and a spot light for shadowing --------------------------------------------
@@ -107,7 +126,7 @@ var buildLights = function() {
 };
 
 var buildControls = function() {       
-    controls = new THREE.OrbitControls( camera, renderer.domElement );				
+    controls = new THREE.OrbitControls( camera3, renderer.domElement );				
             controls.enableDamping = true;
             controls.dampingFactor = 0.25;
             controls.enableZoom = false;
@@ -130,11 +149,14 @@ var buildGroundPlane = function() {
     // }
     // groundGeometry.computeFaceNormals();
     // groundGeometry.computeVertexNormals();
-    
+    var groundOpacity = config.showGroundPlane ? 1 : 0;
+    var groundTransparent = groundOpacity == 1 ? false : true;    
     var groundMaterial = Physijs.createMaterial( 
             new THREE.MeshPhongMaterial({  
             color: 0xffffff,
             wireframe: false,
+            transparent: groundTransparent, 
+            opacity: groundOpacity
             }),
             config.groundFriction, // high friction
             0.9 // high restitution
@@ -142,6 +164,7 @@ var buildGroundPlane = function() {
 
     // If your plane is not square as far as face count then the HeightfieldMesh
     // takes two more arguments at the end: # of x faces and # of y faces that were passed to THREE.PlaneMaterial
+
     ground = new Physijs.PlaneMesh(
         groundGeometry,
         groundMaterial,
@@ -187,7 +210,7 @@ var buildGroundPlane = function() {
     scene.add(frontPlane);
 
     //add end plane
-    var endPlaneGeometry = new THREE.PlaneGeometry(config.sceneWidth, 100);
+    var endPlaneGeometry = new THREE.PlaneGeometry(config.sceneWidth, 1000);
     var endPlaneMaterial = Physijs.createMaterial(
         new THREE.MeshBasicMaterial(
             {color: 0x007744, 
@@ -282,7 +305,7 @@ var buildPokemonChar = function() {
     sprite.add(ring);
     }
 
-    var buildBall = function() {
+var buildBall = function() {
     // create a canvas to draw the ball's texture
     var ballCanvas = document.createElement('canvas');
     ballCanvas.width = 64;
@@ -307,6 +330,13 @@ var buildPokemonChar = function() {
     // create the THREE texture object with our canvas
     var ballTexture = new THREE.Texture( ballCanvas );
     ballTexture.needsUpdate = true;
+
+EventsControls1 = new EventsControls( camera3, renderer.domElement );
+EventsControls1.map = ball;
+EventsControls1.attachEvent( 'onclick', function () {
+		console.log('onclick ', this.focused);
+        tossBall();
+    });
 
     // create the physijs-enabled material with some decent friction & bounce properties
     var ballMaterial = Physijs.createMaterial(
@@ -345,12 +375,19 @@ var buildPokemonChar = function() {
         // linear_velocity and angular_velocity are Vector3 objects which represent the velocity of the collision
 
         console.log('collision',other_object.name);
+        if (other_object.name == "END PLANE") {
+            //resetBall();
+            return;
+        }
+
         // if (!ballSpinning) {
             ball.setAngularVelocity( new THREE.Vector3(2,16,6) );
             //ball.cube.material.color.
             ballSpinning = true;
         //}
     });
+
+EventsControls1.attach(ball);
 
     scene.add( ball );
 };
@@ -361,22 +398,50 @@ var playAudio = function() {
 
     var mp3URL = "audio/POKEMON GO Theme PEAKWAVE REMIX.mp3";
     if(device.platform.toLowerCase() === "android") mp3URL = "/android_asset/www/" + mp3URL;
-    var media = new Media(mp3URL, null, function(err) { alert('Media error\n' + err); });
+    var media = new Media(mp3URL, 
+        null, 
+        function(err) { alert('Media error\n' + err); },
+        function(status) {
+            if (status == Media.MEDIA_STOPPED && config.playAudioRepeat) {
+                playAudio();
+            }
+        });
     media.play();
 }
 
+var showCamera = function() {
+    if (!window.ezar) {
+        alert('Unable to detect the ezAR plugin');
+        return;
+    }
+
+    ezar.initializeVideoOverlay(
+        function() {
+           ezar.getBackCamera().start();
+        },
+        function(err) {
+            alert('unable to init ezar: ' + err);
+        });
+}
+
 // update the physics engine and render every frame -----------------------------------------------
-var animate = function() {        
+var animate = function() {       
+     // continue animating
+    requestAnimationFrame( animate );
+
     if (ballState.simulationRunning) {
         scene.simulate(); // run physics
+        
+        if (ballState.simulationTicks > 120) {
+            var ballSpeed = ball.getLinearVelocity().length();
+            if (ballSpeed < 30) resetBall();
+        }
+        ballState.simulationTicks++;
     } else {
-        shakeBall();
+        //shakeBall();
     }
     if (controls) controls.update();
-    renderer.render( scene, camera); // render the scene
-
-    // continue animating
-    requestAnimationFrame( animate );
+    renderer.render(scene, camera3); // render the scene  
 }
 
     
@@ -431,24 +496,50 @@ var shakeBall = function() {
 var tossBall = function(event) {
     if (ballState.simulationRunning) return;
 
+//scene.onSimulationResume();
     var xSpeed = config.speedX;
     var ySpeed = config.speedY;
     var zSpeed = config.speedZ;
     ball.setLinearVelocity( new THREE.Vector3(xSpeed,ySpeed,zSpeed) );
     ball.setAngularVelocity( new THREE.Vector3(1,0,0) );
 
+    ballState.simulationStartTime = new Date();
     ballState.simulationRunning = true; 
+    scene.onSimulationResume();
 };
-document.addEventListener('click', tossBall, false);
+//ball.addEventListener('click', tossBall, false);
+
+
+var resetBall = function() {
+console.log('ticks: ', ballState.simulationTicks );
+
+
+    ball.setLinearVelocity( new THREE.Vector3(0,0,0) );
+    ball.setAngularVelocity( new THREE.Vector3(0,0,0) );
+
+    ball.position.x = config.ballX; //12
+    ball.position.y = config.ballY; //12
+    ball.position.z = config.ballZ;
+    ball.rotation.x = config.ballIdleRotation;
+    ball.rotation.y = 0;
+    ball.rotation.z = 0;
+
+ball.__dirtyPosition = true;
+ball.__dirtyRotation = true;
+ballState.simulationTicks = 0;
+ballState.simulationRunning = false;
+}
 
 // update THREE objects when window resizes -------------------------------------------------------
 var onWindowResize = function() {
     // store scene dimensions
-    sceneW = container.offsetWidth;
-    sceneH = container.offsetHeight;
-    // update camera
-    camera.aspect = sceneW / sceneH;
-    camera.updateProjectionMatrix();
+    sceneW = window.innerWidth;
+    sceneH = window.innerHeight;
+    // sceneW = container.offsetWidth;
+    // sceneH = container.offsetHeight;
+    // update camera3
+    camera3.aspect = sceneW / sceneH;
+    camera3.updateProjectionMatrix();
 
     // set renderer size
     renderer.setSize( sceneW, sceneH );
@@ -456,18 +547,14 @@ var onWindowResize = function() {
 window.addEventListener( 'resize', onWindowResize, false );
 
 // kick it off ------------------------------------------------------------------------------------
-var hasWebGL = (function () { 
+var hasWebGL = function () { 
     // from Detector.js
     try { 
         return !! window.WebGLRenderingContext && !! document.createElement( 'canvas' ).getContext( 'experimental-webgl' ); 
     } catch( e ) { 
         return false; 
     } 
-})();
-
-if( hasWebGL ) {
-    init();
-    animate();
-} else {
-    alert('You don\'t seem to have WebGL, which is required for this demo.');
 }
+
+
+init();

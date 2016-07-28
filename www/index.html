@@ -2,17 +2,13 @@
   <head>
     <meta charset='utf-8'/>
     <title>ezAR Pokemon GO Experiment</title>
-    <meta content='width=device-width, initial-scale=1, maximum-scale=2, user-scalable=1' name='viewport'>    
+    < <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">   
 
     <style type="text/css">
 
       body {
-        background-color: #ffffff;
-        color: #222222;
-        text-align: center;
-        font-size: 20px;
-        font-family: 'Open Sans',sans-serif;
-        font-weight: 300;
+        /*background-color: #ffffff;*/
+        background-color: transparent;
         margin: 0;
         padding: 0;
 
@@ -26,16 +22,20 @@
     
       #container {
         height: 100%;
-        background-color: #323352;
+        /*background-color: #323352;*/
+        background-color: transparent;
         position: relative;
         cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <div id="container"></div>
+    <!--<div id="container"></div>-->
     
+    <script type="text/javascript" src="cordova.js"></script>
+    <!--<script type="text/javascript" src="./hammer.js"></script>-->
     <script type="text/javascript" src="./js/three.js"></script>
+    <script type="text/javascript" src="./js/EventsControls.js"></script>
     <script type="text/javascript" src="./js/OrbitControls.js"></script>
     <script type="text/javascript" src="./js/physi.js"></script>
     <script type="text/javascript" src="./js/simplex-noise.js"></script>
