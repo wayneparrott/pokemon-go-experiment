@@ -12,7 +12,7 @@ var config = {
     showCamera: false,
     showScenicBackground: false, //todo
     rendererAlpha: true,
-    playAudio: false,
+    playAudio: true,
     playAudioRepeat: true,
     simulationEnabled: true,
     showControls: false,
