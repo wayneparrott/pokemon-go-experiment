@@ -18,7 +18,7 @@
 	Date.now = (Date.now || function () {
 		return new Date().getTime();
 	});
-
+ 
 	if ('now' in window.performance === false) {
 		var offset = window.performance.timing && window.performance.timing.navigationStart ? window.performance.timing.navigationStart
 		                                                                                    : Date.now();
