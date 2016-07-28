@@ -1,20 +1,21 @@
 // scene container element ------------------------------------------------------------------------
-var container = document.getElementById('container');
+//var container = document.getElementById('container');
 
 // THREE objects  ---------------------------------------------------------------------------------
 var camera3, scene, renderer;
 var sceneW, sceneH;
 var physicsMaterial;
-var ball;
+var sprite, ball;
 var controls;
 
 var config = {
-    showCamera: true,
-    playAudio: true,
+    showCamera: false,
+    playAudio: false,
     playAudioRepeat: true,
     simulationEnabled: true,
     showControls: false,
     showAxis: false,
+    rendererAlpha: true, 
     showGroundPlane: false,
     showHitPlane: false,
     showBumperPlanes: false,
@@ -24,7 +25,8 @@ var config = {
     gravityY: -700,
     gravityZ: 00,
     groundZ: -900,
-    groundFriction: 1.5,
+    groundFriction: 0.6,
+    groundRestitution: 0.6,
     camX: 0,
     camY: 800,
     camZ: 1500,
@@ -36,14 +38,22 @@ var config = {
     ballZ: 800,
     ballIdleRotation: Math.PI / 15,
     ballScale: 1,
-    speedX: 100,
-    speedY: 1000,  //1000 hit
-    speedZ: -1000 //-1000 long, -900 hit
+    velocityX: 0,
+    velocityY: 1100,  //1000 hit
+    velocityZ: -900, //-1000 long, -900 hit
+    velocityXRange: [-100,100,this.velocityX],
+    velocityYRange: [1000,1300,this.velocityY],
+    velocityZRange: [-900,-1200,this.velocityZ],
+    angularXRange: [-5,5,0],
+    angularYRange: [-5,5,0],
+    angularZRange: [-5,5,0]
 };
 
 var ballState = {
     simulationRunning: false,
-    simulationTicks: 0
+    simulationTicks: 0,
+    misses: 0,
+    maxMisses: 2
 };
 
 // initialize the physics demo --------------------------------------------------------------------
@@ -77,6 +87,9 @@ function init() {
     document.addEventListener('deviceready', initCordova, false);
 
     animate();
+
+    showPokemon(true);
+    resetBall();
 }
 
 var initCordova = function() {
@@ -98,7 +111,7 @@ var buildPhysicsScene = function() {
 
 // build the WebGL renderer -----------------------------------------------------------------------
 var buildRenderer = function() {
-    renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
+    renderer = new THREE.WebGLRenderer( { antialias: true, alpha: config.rendererAlpha } );
     renderer.setSize( sceneW, sceneH );
     //renderer.setClearColor(new THREE.Color(0xFFFFFF,0));
     renderer.shadowMap.enabled = true;
@@ -159,7 +172,7 @@ var buildGroundPlane = function() {
             opacity: groundOpacity
             }),
             config.groundFriction, // high friction
-            0.9 // high restitution
+            config.groundRestitution // high restitution
         );
 
     // If your plane is not square as far as face count then the HeightfieldMesh
@@ -261,11 +274,14 @@ var buildPokemonChar = function() {
     loader.setCrossOrigin( 'anonymous' );            
     var texture = loader.load("images/bulbasaur.png");
     var spriteMaterial = Physijs.createMaterial(
-        new THREE.MeshLambertMaterial({map: texture}),
+        new THREE.MeshLambertMaterial(
+            { map: texture,
+              transparent: true, 
+              opacity: 0}),
         0.9, 0.1);
 
-        var sprite = new Physijs.BoxMesh( 
-        spriteGeometry, spriteMaterial, 0, { restitution: .2 } );
+    sprite = new Physijs.BoxMesh( 
+    spriteGeometry, spriteMaterial, 0, { restitution: .2 } );
 
     // var sprite = new Physijs.PlaneMesh(planeGeometry, planeMaterial, 0);
     sprite.name = "POKEMON";
@@ -281,7 +297,10 @@ var buildPokemonChar = function() {
 
     //create green ring
     var ringMaterial = Physijs.createMaterial(
-        new THREE.MeshBasicMaterial({color: 0x00FF00}),
+        new THREE.MeshBasicMaterial(
+            {color: 0x00FF00,
+             transparent: true, 
+             opacity: 0.6 }),
         0.4, 
         0.9);
     var ring = new THREE.Mesh( 
@@ -289,12 +308,16 @@ var buildPokemonChar = function() {
         ringMaterial );
             ring.name = "GRING"; 
     ring.position.y = -50;
+    ring.visible = false;
     sprite.add(ring);
     // scene.add(sprite);
 
         //create outter white ring
     ringMaterial = Physijs.createMaterial(
-        new THREE.MeshBasicMaterial({color: 0xFFFFFF}),
+        new THREE.MeshBasicMaterial(
+            {color: 0xFFFFFF,
+             transparent: true, 
+             opacity: 0.8}),
         0.4, 
         0.9);
     ring = new THREE.Mesh( 
@@ -302,6 +325,7 @@ var buildPokemonChar = function() {
         ringMaterial );
             ring.name = "WRING"; 
     ring.position.y = -50;
+    ring.visible = false;
     sprite.add(ring);
     }
 
@@ -335,7 +359,7 @@ EventsControls1 = new EventsControls( camera3, renderer.domElement );
 EventsControls1.map = ball;
 EventsControls1.attachEvent( 'onclick', function () {
 		console.log('onclick ', this.focused);
-        tossBall();
+        launchBall();
     });
 
     // create the physijs-enabled material with some decent friction & bounce properties
@@ -345,7 +369,9 @@ EventsControls1.attachEvent( 'onclick', function () {
         shininess: 50,
         color: 0xdddddd,
         emissive: 0x111111,
-        side: THREE.FrontSide
+        side: THREE.FrontSide,
+        transparent: true, 
+        opacity: 0
         }), 
         .6, // mid friction
         .7 // mid restitution
@@ -375,19 +401,22 @@ EventsControls1.attachEvent( 'onclick', function () {
         // linear_velocity and angular_velocity are Vector3 objects which represent the velocity of the collision
 
         console.log('collision',other_object.name);
-        if (other_object.name == "END PLANE") {
-            //resetBall();
-            return;
+        // if (other_object.name == "END PLANE") {
+        //     //resetBall();
+        //     return;
+        // } else 
+        if (other_object.name == "POKEMON") {
+            hitPokemon(150);
+        } else {
+            //showPokemonRings(false);
         }
 
-        // if (!ballSpinning) {
-            ball.setAngularVelocity( new THREE.Vector3(2,16,6) );
-            //ball.cube.material.color.
-            ballSpinning = true;
-        //}
+         ball.setAngularVelocity( new THREE.Vector3(2,16,6) );          
+         ballSpinning = true;
+
     });
 
-EventsControls1.attach(ball);
+    EventsControls1.attach(ball);
 
     scene.add( ball );
 };
@@ -425,16 +454,25 @@ var showCamera = function() {
 }
 
 // update the physics engine and render every frame -----------------------------------------------
-var animate = function() {       
+var animate = function(time) {       
      // continue animating
     requestAnimationFrame( animate );
+    TWEEN.update(time);
 
     if (ballState.simulationRunning) {
         scene.simulate(); // run physics
         
-        if (ballState.simulationTicks > 120) {
-            var ballSpeed = ball.getLinearVelocity().length();
-            if (ballSpeed < 30) resetBall();
+        if (ballState.simulationTicks > 300) {
+            
+            var ballVelocity3 = ball.getLinearVelocity();
+            var ballVelocity = ballVelocity3.length();
+            if (ballVelocity < 50) {
+                console.log('ballVelocity', ballVelocity);
+                ballState.simulationRunning = false;
+                ballState.misses++;
+                fadeObject(ball,0,750,resetBall);
+                return;
+             }
         }
         ballState.simulationTicks++;
     } else {
@@ -444,76 +482,39 @@ var animate = function() {
     renderer.render(scene, camera3); // render the scene  
 }
 
-    
-// shake ball ----------------------------------------------------------
-var rotStep = 0.1;
-var rotSleep = 3;
-var rotSleepCnt = 0;
-
-var posStep = 2;
-var pos0;
-var disablePos = true;
-var shakeBall = function() {
-    //if (!shakBall) return;
-
-    if (rotSleep > 0) { 
-        if (rotSleepCnt < rotSleep) {   
-        rotSleepCnt++;            
-        } else {
-        if (Math.floor(Math.random() * 2) == 0) { //zero (heads)
-            rotSleep = Math.random() * 10;
-            rotSleepCnt = 0;
-        } else { //1 (tails)
-            rotSleep = Math.random() * 10;
-            rotSleepCnt = 0;
-        }
-        }
-    } else { //rotate ball
-
-        var maxRot = Math.PI / 6;
-        var minRot = -maxRot;
-        if (ball.rotation.z < minRot || ball.rotation.z > maxRot) {
-        rotStep *= -1;
-        } else {
-        ball.rotation.z += rotStep;
-        }
-    }
-
-    if (!pos0) pos0 = ball.position.y;
-    var maxPos = pos0 + 10;
-    var minPos = pos0 - 10;        
-    if (ball.position.y < minPos || ball.position.y > maxPos) 
-        posStep *= -1;
-    if (!disablePos) {
-        ball.position.y += posStep;
-    }
-
-    ball.__dirtyPosition = true;
-
-};
-
-// randomly toss the ball on mouse click ----------------------------------------------------------
-var tossBall = function(event) {
+// launch the ball on mouse click ----------------------------------------------------------
+var launchBall = function(event) {
     if (ballState.simulationRunning) return;
 
-//scene.onSimulationResume();
-    var xSpeed = config.speedX;
-    var ySpeed = config.speedY;
-    var zSpeed = config.speedZ;
+    var randomizeParams = ballState.misses < ballState.maxMisses;
+console.log('randomizeParams',randomizeParams);
+    var xSpeed = randomizeParams ? rnd(config.velocityXRange) : config.velocityX;
+    var ySpeed = randomizeParams ? rnd(config.velocityYRange) : config.velocityY;
+    var zSpeed = randomizeParams ? rnd(config.velocityZRange) : config.velocityZ;
+    console.log(xSpeed,ySpeed,zSpeed);
     ball.setLinearVelocity( new THREE.Vector3(xSpeed,ySpeed,zSpeed) );
-    ball.setAngularVelocity( new THREE.Vector3(1,0,0) );
+
+    var xRot = rnd(config.angularXRange);
+    var yRot = rnd(config.angularYRange);
+    var zRot = rnd(config.angularZRange);
+    ball.setAngularVelocity( new THREE.Vector3(xRot,yRot,zRot) );
+
+    ball.setDamping(0.0,0.6);
 
     ballState.simulationStartTime = new Date();
     ballState.simulationRunning = true; 
     scene.onSimulationResume();
 };
-//ball.addEventListener('click', tossBall, false);
+//ball.addEventListener('click', launchBall, false);
 
+var rnd = function(range) {
+    var val = range[0] + Math.round((range[1] - range[0]) * Math.random());
+    return val;
+}
 
 var resetBall = function() {
-console.log('ticks: ', ballState.simulationTicks );
-
-
+    ballState.misses = 0;
+    
     ball.setLinearVelocity( new THREE.Vector3(0,0,0) );
     ball.setAngularVelocity( new THREE.Vector3(0,0,0) );
 
@@ -528,6 +529,13 @@ ball.__dirtyPosition = true;
 ball.__dirtyRotation = true;
 ballState.simulationTicks = 0;
 ballState.simulationRunning = false;
+
+    fadeObject(ball,1,750,
+        function() {
+            bounceBall(240);
+            setTimeout(function() { showPokemonRings() }, 1500)
+        });
+
 }
 
 // update THREE objects when window resizes -------------------------------------------------------
@@ -555,6 +563,158 @@ var hasWebGL = function () {
         return false; 
     } 
 }
+
+
+var rotateSprite = function( obj, angles, delay, pause) {
+
+    new TWEEN.Tween(sprite.rotation)
+        //.delay(pause)
+        .to( {
+               // x: obj.rotation._x + angles.x,            
+                //y: obj.rotation._y + angles.y,
+                //z: obj.rotation._z + angles.z 
+                z: [Math.PI/4, Math.PI/2, Math.PI, -Math.PI/2, -Math.PI/4]           
+            }, delay )
+        // .repeat(Infinity)
+        // .yoyo(true)
+        .easing(TWEEN.Easing.Bounce.InOut)
+        .onComplete(function() {
+                //setTimeout( tRotate, pause, obj, angles, delay, pause );
+            })
+        .start();
+}
+
+var bounceSprite = function( obj, heights, delay, pause) {
+
+    new TWEEN.Tween(obj.position)
+        //.delay(pause)
+        .to( {
+                x: obj.position.x + heights.x,            
+                y: obj.position.y + heights.y,
+                z: obj.position.z + heights.z            
+            }, delay )
+        .repeat(3)
+        .yoyo(true)
+        .easing(TWEEN.Easing.Bounce.InOut)
+        .onComplete(function() {
+                //setTimeout( tRotate, pause, obj, angles, delay, pause );
+            })
+        .start();
+}
+
+var bounceBall = function(duration) {
+    var pause = 300;
+    var heights = {x:1, y:75, z:1};
+    var posTween = new TWEEN.Tween(ball.position)
+        //.delay(pause)
+        .to( {
+                //x: obj.position.x + heights.x,            
+                y: ball.position.y + heights.y,
+                //z: obj.position.z + heights.z            
+            }, duration )
+        .repeat(1)
+        .yoyo(true)
+        //.easing(TWEEN.Easing.Quadratic.Out)
+        .start();
+
+    var rotation = {x: 2*Math.PI};
+    var rotTween = new TWEEN.Tween(ball.rotation)
+        //.delay(pause)
+        .to( {            
+                x: ball.rotation._x + rotation.x            
+            }, duration )
+        .repeat(1)
+        //.yoyo(true)
+        //.easing(TWEEN.Easing.Quadratic.InOut)
+        .start();
+}
+
+var shakeBall = function(duration) {
+    var pause = 300;
+    var iterations = 1;
+
+    var heights = {x:10, y:5, z:10};
+    var posTween = new TWEEN.Tween(ball.position)
+        .to( {
+                x: heights.x,            
+                y: heights.y,
+                z: heights.z            
+            }, duration )
+        .repeat(iterations)
+        .yoyo(true)
+        //.easing(TWEEN.Easing.Quadratic.Out)
+        .start();
+
+    var rotation = {x: Math.PI/4, z: 0.1};
+    var rotTween = new TWEEN.Tween(ball.rotation)
+        //.delay(pause)
+        .to( {            
+                x: rotation.x,
+                z: rotation.z         
+            }, duration*2 )
+        .repeat(iterations/2)
+        .yoyo(true)
+        //.easing(TWEEN.Easing.Quadratic.InOut)
+        .start();
+}
+
+var hitPokemon = function(duration) {
+    
+    showPokemonRings(false);
+
+    var iterations = 1;
+    
+    var rotation = {z: 2*Math.PI};
+    var rotTween = new TWEEN.Tween(sprite.rotation)
+        .to( {
+                z: sprite.rotation._z + rotation.z         
+            }, duration )
+        .repeat(1)
+        .yoyo(true)
+        .start();
+}
+
+var showPokemon = function(bool) {
+    var opacity = bool ? 1 : 0; 
+    if (!opacity) showPokemonRings(false);
+    fadeObject(sprite,opacity,750,
+        null // function() { 
+        //     if (bool)  setTimeout( function(){ showPokemonRings(true) });
+        // }
+    );
+}
+
+var showPokemonRings = function(bool, immediate) {
+    var delay = immediate ? 0 : 1000;
+    if (bool) {    
+        showWhitePokemonRing(bool);
+        setTimeout(function(){showGreenPokemonRing(bool)},delay);
+    } else {
+        showGreenPokemonRing(bool);
+        setTimeout(function(){showWhitePokemonRing(bool)},delay);
+    }
+}
+
+var showGreenPokemonRing = function(bool) {
+    sprite.children[0].visible = bool;
+}
+
+var showWhitePokemonRing = function(bool) {
+    sprite.children[1].visible = bool;
+}
+
+
+var fadeObject = function(obj, targetOpacity, duration, onCompletionFn) {
+    console.log('fade ball', targetOpacity);
+	var fadeTween = new TWEEN.Tween(obj.material)
+        .to( {            
+                opacity: targetOpacity         
+            }, duration )
+        .onComplete(onCompletionFn ? onCompletionFn : null)
+        .start();
+}
+//tRotate(sprite, {x:0,y:-Math.PI/2,z:0}, 1000, 1000 );
+
 
 
 init();
