@@ -4,8 +4,8 @@
 // THREE objects  ---------------------------------------------------------------------------------
 var camera3, scene, renderer;
 var sceneW, sceneH;
-var physicsMaterial;
 var sprite, ball;
+var spriteTextures, spriteTextureIdx;
 var controls;
 
 var config = {
@@ -16,6 +16,7 @@ var config = {
     showControls: false,
     showAxis: false,
     rendererAlpha: true, 
+    spriteImages: ['bulbasaur', 'squirtle'],
     showGroundPlane: false,
     showHitPlane: false,
     showBumperPlanes: false,
@@ -268,11 +269,19 @@ var buildHitPlane = function() {
 
 var buildPokemonChar = function() {
 
-    var spriteGeometry = new THREE.BoxGeometry(300,300,1);
+    var spriteGeometry = new THREE.BoxGeometry(600,600,1);
     
     var loader = new THREE.TextureLoader();
-    loader.setCrossOrigin( 'anonymous' );            
-    var texture = loader.load("images/bulbasaur.png");
+    loader.setCrossOrigin( 'anonymous' );    
+
+    spriteTextures = [];
+    for (var i=0; i < config.spriteImages.length; i++) {
+        var file = 'images/' + config.spriteImages[i] + '.png';
+        spriteTextures.push(loader.load(file));
+    }
+    spriteTextureIdx = 1;
+    var texture = spriteTextures[spriteTextureIdx];
+    
     var spriteMaterial = Physijs.createMaterial(
         new THREE.MeshLambertMaterial(
             { map: texture,
@@ -671,8 +680,17 @@ var hitPokemon = function(duration) {
             }, duration )
         .repeat(1)
         .yoyo(true)
+        .onComplete( function() {showPokemon(false); updatePokemon(); showPokemon(true)})
         .start();
+    
 }
+
+var updatePokemon = function() {
+    spriteTextureIdx = ++spriteTextureIdx % spriteTextures.length;
+    var texture = spriteTextures[spriteTextureIdx];
+    sprite.material.map = texture;
+}
+
 
 var showPokemon = function(bool) {
     var opacity = bool ? 1 : 0; 

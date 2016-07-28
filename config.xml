@@ -4,27 +4,25 @@
     <description>
         A sample Apache Cordova application that responds to the deviceready event.
     </description>
-    <author email="dev@cordova.apache.org" href="http://cordova.io">
-        Apache Cordova Team
+    <author email="info@ezartech.com" href="http://ezartech.com">
+        Wayne Parrott
     </author>
     <content src="index.html" />
     <plugin name="cordova-plugin-whitelist" spec="1" />
     <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-    <allow-intent href="tel:*" />
-    <allow-intent href="sms:*" />
-    <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
     <platform name="android">
-        <allow-intent href="market:*" />
     </platform>
     <platform name="ios">
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
-    <plugin name="cordova-plugin-media" spec="~2.3.0" />
-    <plugin name="com.ezartech.ezar.videooverlay" spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.videoOverlay" />
-    <plugin name="com.ezartech.ezar.snapshot" spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.snapshot" />
+
     <plugin name="cordova-plugin-device" spec="~1.1.2" />
+    <plugin name="cordova-plugin-media"  spec="~2.3.0" />
+    <plugin name="com.ezartech.ezar.videooverlay" spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.videoOverlay" />
+    <plugin name="com.ezartech.ezar.snapshot"     spec="/Users/wayne/dev/ezar/plugins/com.ezartech.ezar.snapshot" />
+    
 </widget>
