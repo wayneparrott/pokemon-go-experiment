@@ -1,21 +1,22 @@
-// scene container element ------------------------------------------------------------------------
-//var container = document.getElementById('container');
 
 // THREE objects  ---------------------------------------------------------------------------------
 var camera3, scene, renderer;
 var sceneW, sceneH;
 var sprite, ball;
 var spriteTextures, spriteTextureIdx;
+var pokemonHit;
 var controls;
+var EventsControls2;
 
 var config = {
     showCamera: false,
+    showScenicBackground: false, //todo
+    rendererAlpha: true,
     playAudio: false,
     playAudioRepeat: true,
     simulationEnabled: true,
     showControls: false,
-    showAxis: false,
-    rendererAlpha: true, 
+    showAxis: false,     
     spriteImages: ['bulbasaur', 'squirtle'],
     showGroundPlane: false,
     showHitPlane: false,
@@ -33,21 +34,27 @@ var config = {
     camZ: 1500,
     camLookY: 500,
     camLookZ: -1000,
+    spriteX: 0,
+    spriteY: 750,
+    spriteZ: -1900,
+    maxPokemonScale: 1.5,
     ballSize: 32,
     ballX: 0,
     ballY: 500,
     ballZ: 800,
     ballIdleRotation: Math.PI / 15,
     ballScale: 1,
+    ballMinVelocity: 150,
     velocityX: 0,
     velocityY: 1100,  //1000 hit
     velocityZ: -900, //-1000 long, -900 hit
     velocityXRange: [-100,100,this.velocityX],
-    velocityYRange: [1000,1300,this.velocityY],
+    velocityYRange: [1000,1100,this.velocityY],
     velocityZRange: [-900,-1200,this.velocityZ],
     angularXRange: [-5,5,0],
     angularYRange: [-5,5,0],
-    angularZRange: [-5,5,0]
+    angularZRange: [-5,5,0],
+    hitPokemonSpinDuration: 200
 };
 
 var ballState = {
@@ -64,7 +71,6 @@ function init() {
         alert('You don\'t seem to have WebGL, which is required for this demo.');
         return;
     }
-
 
     // store scene dimensions
     sceneW = window.innerWidth;
@@ -89,8 +95,8 @@ function init() {
 
     animate();
 
-    showPokemon(true);
-    resetBall();
+    updatePokemon();    
+    setTimeout(function() {resetBall()},1500);
 }
 
 var initCordova = function() {
@@ -108,6 +114,11 @@ var buildPhysicsScene = function() {
     // init the scene
     scene = new Physijs.Scene({reportsize: 50, fixedTimeStep: 1 / 60});
     scene.setGravity(new THREE.Vector3( 0, config.gravityY, config.gravityZ ));
+
+    if (config.showScenicBackground && !window.ezar) {
+        //document.body.style.backgroundImage = "url('j')";
+        document.body.style.backgroundColor = "#323352;";
+    }
 };
 
 // build the WebGL renderer -----------------------------------------------------------------------
@@ -176,9 +187,6 @@ var buildGroundPlane = function() {
             config.groundRestitution // high restitution
         );
 
-    // If your plane is not square as far as face count then the HeightfieldMesh
-    // takes two more arguments at the end: # of x faces and # of y faces that were passed to THREE.PlaneMaterial
-
     ground = new Physijs.PlaneMesh(
         groundGeometry,
         groundMaterial,
@@ -194,7 +202,6 @@ var buildGroundPlane = function() {
     ground.rotation.x = -Math.PI / 2;
     ground.position.z = config.groundZ;
     ground.receiveShadow = true;
-
     scene.add( ground );
 
     var bumperOpacity = config.showBumperPlanes ? 1 : 0;
@@ -215,12 +222,9 @@ var buildGroundPlane = function() {
     frontPlane.receiveShadow = true;
     
     // rotate and position the plane
-    //endPlane.rotation.x = - Math.PI / 2;
     frontPlane.position.x = 0;
     frontPlane.position.y = 100;
     frontPlane.position.z = -1000;
-
-    // add the plane to the scene
     scene.add(frontPlane);
 
     //add end plane
@@ -237,12 +241,9 @@ var buildGroundPlane = function() {
     endPlane.receiveShadow = true;
 
     // rotate and position the plane
-    //endPlane.rotation.x = - Math.PI / 2;
     endPlane.position.x = 0;
     endPlane.position.y = 100;
     endPlane.position.z = -5000;
-
-    // add the plane to the scene
     scene.add(endPlane);
 };
 
@@ -269,7 +270,7 @@ var buildHitPlane = function() {
 
 var buildPokemonChar = function() {
 
-    var spriteGeometry = new THREE.BoxGeometry(600,600,1);
+    var spriteGeometry = new THREE.BoxGeometry(400,400,1);
     
     var loader = new THREE.TextureLoader();
     loader.setCrossOrigin( 'anonymous' );    
@@ -279,7 +280,7 @@ var buildPokemonChar = function() {
         var file = 'images/' + config.spriteImages[i] + '.png';
         spriteTextures.push(loader.load(file));
     }
-    spriteTextureIdx = 1;
+    spriteTextureIdx = 0;
     var texture = spriteTextures[spriteTextureIdx];
     
     var spriteMaterial = Physijs.createMaterial(
@@ -295,13 +296,6 @@ var buildPokemonChar = function() {
     // var sprite = new Physijs.PlaneMesh(planeGeometry, planeMaterial, 0);
     sprite.name = "POKEMON";
     sprite.receiveShadow = true;
-
-    // rotate and position the plane
-    sprite.position.x = 0;
-    sprite.position.y = 750;
-    sprite.position.z = -1900;
-    //sprite.rotation.y = - Math.PI / 2;
-
     scene.add(sprite);
 
     //create green ring
@@ -319,9 +313,8 @@ var buildPokemonChar = function() {
     ring.position.y = -50;
     ring.visible = false;
     sprite.add(ring);
-    // scene.add(sprite);
 
-        //create outter white ring
+    //create outter white ring
     ringMaterial = Physijs.createMaterial(
         new THREE.MeshBasicMaterial(
             {color: 0xFFFFFF,
@@ -336,7 +329,14 @@ var buildPokemonChar = function() {
     ring.position.y = -50;
     ring.visible = false;
     sprite.add(ring);
-    }
+
+EventsControls2 = new EventsControls( camera3, renderer.domElement );
+EventsControls2.map = sprite;
+// EventsControls2.attachEvent( 'onclick', function () {
+// 		console.log('onclick ', this.focused);
+//         updatePokemon(1000);
+//     });
+}
 
 var buildBall = function() {
     // create a canvas to draw the ball's texture
@@ -363,13 +363,6 @@ var buildBall = function() {
     // create the THREE texture object with our canvas
     var ballTexture = new THREE.Texture( ballCanvas );
     ballTexture.needsUpdate = true;
-
-EventsControls1 = new EventsControls( camera3, renderer.domElement );
-EventsControls1.map = ball;
-EventsControls1.attachEvent( 'onclick', function () {
-		console.log('onclick ', this.focused);
-        launchBall();
-    });
 
     // create the physijs-enabled material with some decent friction & bounce properties
     var ballMaterial = Physijs.createMaterial(
@@ -401,8 +394,15 @@ EventsControls1.attachEvent( 'onclick', function () {
     ball.rotation.x = config.ballIdleRotation;
     ball.scale.set(config.ballScale,config.ballScale,config.ballScale);
     
-    ball.receiveShadow = true;
+    ball.receiveShadow = false;
     ball.castShadow = true;
+
+var EventsControls1 = new EventsControls( camera3, renderer.domElement );
+EventsControls1.map = ball;
+EventsControls1.attachEvent( 'onclick', function () {
+		console.log('onclick ', this.focused);
+        launchBall();
+    });
 
     ball.addEventListener( 'collision', function( other_object, linear_velocity, angular_velocity ) {
         // `this` is the mesh with the event listener
@@ -415,9 +415,9 @@ EventsControls1.attachEvent( 'onclick', function () {
         //     return;
         // } else 
         if (other_object.name == "POKEMON") {
-            hitPokemon(150);
+            hitPokemon(config.hitPokemonSpinDuration);
         } else {
-            //showPokemonRings(false);
+            //vibratePokemon();
         }
 
          ball.setAngularVelocity( new THREE.Vector3(2,16,6) );          
@@ -475,7 +475,7 @@ var animate = function(time) {
             
             var ballVelocity3 = ball.getLinearVelocity();
             var ballVelocity = ballVelocity3.length();
-            if (ballVelocity < 50) {
+            if (ballVelocity < config.ballMinVelocity) {
                 console.log('ballVelocity', ballVelocity);
                 ballState.simulationRunning = false;
                 ballState.misses++;
@@ -541,6 +541,7 @@ ballState.simulationRunning = false;
 
     fadeObject(ball,1,750,
         function() {
+            pokemonHit = false;
             bounceBall(240);
             setTimeout(function() { showPokemonRings() }, 1500)
         });
@@ -668,42 +669,87 @@ var shakeBall = function(duration) {
 }
 
 var hitPokemon = function(duration) {
-    
-    showPokemonRings(false);
+    if (pokemonHit) return;
+    pokemonHit = true;
+
+    showPokemonRings(false,200);
 
     var iterations = 1;
     
     var rotation = {z: 2*Math.PI};
     var rotTween = new TWEEN.Tween(sprite.rotation)
         .to( {
-                z: sprite.rotation._z + rotation.z         
+                z: 2*Math.PI         
             }, duration )
         .repeat(1)
         .yoyo(true)
-        .onComplete( function() {showPokemon(false); updatePokemon(); showPokemon(true)})
+        .onComplete( function() { 
+             rotTween.to( {
+                z: -2*Math.PI         
+            }, duration )
+            .delay(750)
+            .onComplete( function() {updatePokemon(2000);} )
+            .start();             
+        })
         .start();
     
 }
 
-var updatePokemon = function() {
-    spriteTextureIdx = ++spriteTextureIdx % spriteTextures.length;
-    var texture = spriteTextures[spriteTextureIdx];
-    sprite.material.map = texture;
+var updatePokemon = function(fadeMillis) {
+    
+    var callback = function() {
+        spriteTextureIdx = ++spriteTextureIdx % spriteTextures.length;
+console.log('spriteIdx', spriteTextureIdx);        
+        var texture = spriteTextures[spriteTextureIdx];
+        sprite.material.map = texture;
+
+        //resize scale [1x-2x] range
+        var scale = Math.min(Math.random()+1, config.maxPokemonScale).toPrecision(3);
+        // sprite.scale.x = scale;
+        // sprite.scale.y = scale;
+
+        //reposition based on scale
+        var offsetX = rnd([-200,200]);
+        var offsetY = rnd([-300,300]);
+        var offsetZ = -offsetY * 3;
+console.log('pokoffsets', offsetX, offsetY, offsetZ);
+        // rotate and position the plane
+        sprite.position.x = config.spriteX + offsetX;
+        sprite.position.y = config.spriteY + offsetY;
+        sprite.position.z = config.spriteZ + offsetZ;
+
+        sprite.__dirtyPosition = true;
+
+        showPokemon(true,fadeMillis);
+
+        //EventsControls2.deattachEvent( 'onclick' );
+        EventsControls2.attachEvent( 'onclick', function () {
+		    console.log('onclick ', this.focused);
+            updatePokemon(1000);
+        });
+
+    };
+
+    showPokemon(false,fadeMillis,callback); 
 }
 
 
-var showPokemon = function(bool) {
+var showPokemon = function(bool, fadeMillis, callback) {
+    var duration = fadeMillis ? fadeMillis : 750;
     var opacity = bool ? 1 : 0; 
     if (!opacity) showPokemonRings(false);
-    fadeObject(sprite,opacity,750,
-        null // function() { 
-        //     if (bool)  setTimeout( function(){ showPokemonRings(true) });
-        // }
+    fadeObject(sprite,opacity,duration,
+        function() { 
+            if (callback) callback();
+            if (bool)  {                
+                setTimeout( function(){ showPokemonRings(true,1000) }, duration*2);
+            }
+        }
     );
 }
 
-var showPokemonRings = function(bool, immediate) {
-    var delay = immediate ? 0 : 1000;
+var showPokemonRings = function(bool, stagerMillis) {
+    var delay = !stagerMillis ? 0 : stagerMillis;
     if (bool) {    
         showWhitePokemonRing(bool);
         setTimeout(function(){showGreenPokemonRing(bool)},delay);
@@ -719,6 +765,26 @@ var showGreenPokemonRing = function(bool) {
 
 var showWhitePokemonRing = function(bool) {
     sprite.children[1].visible = bool;
+}
+
+var vibratePokemon = function() {
+    var duration = 50;
+    var rotTween = new TWEEN.Tween(sprite.rotation)
+        .to( {            
+                z: 0.1         
+            }, duration )
+        .repeat(2)
+        .yoyo()
+        .start();
+
+    var posTween = new TWEEN.Tween(sprite.position)
+        .to( {            
+                x: sprite.position.x + 50,
+                y: sprite.position.y + 50,  
+            }, duration )
+        .repeat(2)
+        .yoyo()
+        .start();
 }
 
 
