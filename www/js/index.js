@@ -105,6 +105,14 @@ var initCordova = function() {
     if (config.playAudio) playAudio();
 }
 
+var snapshot = function() {
+    if (window.ezar && window.ezar.snapshot) {
+        ezar.snapshot();
+    } else {
+        alert('The ezAR snapshot plugin is not installed');
+    }
+}
+
 // build the Physijs scene, which takes the place of a THREE scene --------------------------------
 var buildPhysicsScene = function() {
     // lean about Physi.js basic setup here: https://github.com/chandlerprall/Physijs/wiki/Basic-Setup
@@ -117,7 +125,7 @@ var buildPhysicsScene = function() {
     scene.setGravity(new THREE.Vector3( 0, config.gravityY, config.gravityZ ));
 
     if (config.showScenicBackground && !window.ezar) {
-        //document.body.style.backgroundImage = "url('j')";
+        //todo 
         document.body.style.backgroundColor = "#323352;";
     }
 };
