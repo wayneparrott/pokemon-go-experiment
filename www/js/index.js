@@ -9,7 +9,7 @@ var controls;
 var EventsControls2;
 
 var config = {
-    showCamera: false,
+    showCamera: true,
     showScenicBackground: false, //todo
     rendererAlpha: true,
     playAudio: true,
@@ -17,7 +17,7 @@ var config = {
     simulationEnabled: true,
     showControls: false,
     showAxis: false,     
-    spriteImages: ['bulbasaur', 'squirtle'],
+    spriteImages: ['bulbasaur', 'squirtle', 'pikachu'],
     showGroundPlane: false,
     showHitPlane: false,
     showBumperPlanes: false,
@@ -27,17 +27,18 @@ var config = {
     gravityY: -700,
     gravityZ: 00,
     groundZ: -900,
-    groundFriction: 0.6,
-    groundRestitution: 0.6,
+    groundFriction: 0.5,
+    groundRestitution: 0.7,
     camX: 0,
     camY: 800,
     camZ: 1500,
     camLookY: 500,
     camLookZ: -1000,
+    spriteSize: 500,
+    maxSpriteScale: 2,
     spriteX: 0,
-    spriteY: 750,
-    spriteZ: -1900,
-    maxPokemonScale: 1.5,
+    spriteY: 850,
+    spriteZ: -1900,    
     ballSize: 32,
     ballX: 0,
     ballY: 500,
@@ -50,7 +51,7 @@ var config = {
     velocityZ: -900, //-1000 long, -900 hit
     velocityXRange: [-100,100,this.velocityX],
     velocityYRange: [1000,1100,this.velocityY],
-    velocityZRange: [-900,-1200,this.velocityZ],
+    velocityZRange: [-700,-1200,this.velocityZ],
     angularXRange: [-5,5,0],
     angularYRange: [-5,5,0],
     angularZRange: [-5,5,0],
@@ -270,7 +271,7 @@ var buildHitPlane = function() {
 
 var buildPokemonChar = function() {
 
-    var spriteGeometry = new THREE.BoxGeometry(400,400,1);
+    var spriteGeometry = new THREE.BoxGeometry(config.spriteSize,config.spriteSize,1);
     
     var loader = new THREE.TextureLoader();
     loader.setCrossOrigin( 'anonymous' );    
@@ -704,14 +705,14 @@ console.log('spriteIdx', spriteTextureIdx);
         sprite.material.map = texture;
 
         //resize scale [1x-2x] range
-        var scale = Math.min(Math.random()+1, config.maxPokemonScale).toPrecision(3);
-        // sprite.scale.x = scale;
-        // sprite.scale.y = scale;
+        var scale = Math.min(Math.random()+1, config.maxSpriteScale).toPrecision(3);
+        sprite.scale.x = scale;
+        sprite.scale.y = scale;
 
-        //reposition based on scale
+        //reposition based on scale, todo
         var offsetX = rnd([-200,200]);
         var offsetY = rnd([-300,300]);
-        var offsetZ = -offsetY * 3;
+        var offsetZ = 0; //-offsetY * 3;
 console.log('pokoffsets', offsetX, offsetY, offsetZ);
         // rotate and position the plane
         sprite.position.x = config.spriteX + offsetX;
