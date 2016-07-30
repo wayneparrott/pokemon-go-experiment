@@ -5,7 +5,8 @@ Uses ezAR, three.js, physijs and Ionic Framework.
 This project demonstrates the use of free open-source augemented-reality and 3D JavaScript libraries 
 to reproduce a basic example of the popular Pokemon GO mobile app. 
 
-**video here**
+[!(https://github.com/ezartech/pokemon-go-experiment/blob/master/_research/PG-frame40.png)](https://youtu.be/wRD4F9hmrOc)
+
 
 ##WORK IN PROGRESS NOTES
 
@@ -22,7 +23,7 @@ the Pokemon GO background music plays continuously (earworm). The project
 uses three.js, physijs, tween.js and the ezAR videoOverlay and snapshot 
 plugins for Cordova.  
 
-The code be aware it is a work-in-progress and needs 
+The code is a work-in-progress and needs 
 serious clean up and reorganization. This is my first real three.js project and I'm still learning
 the basics. I spent minimal time on the scene layout and ball trajectory calculations 
 opting instead for simple empirically derived values while iteratively improving 
