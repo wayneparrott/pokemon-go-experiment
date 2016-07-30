@@ -5,8 +5,8 @@ Uses ezAR, three.js, physijs and Ionic Framework.
 This project demonstrates the use of free open-source augemented-reality and 3D JavaScript libraries 
 to reproduce a basic example of the popular Pokemon GO mobile app. 
 
-[!(https://github.com/ezartech/pokemon-go-experiment/blob/master/_research/PG-frame40.png)](https://youtu.be/wRD4F9hmrOc)
-
+[![Video Introduction](https://github.com/ezartech/pokemon-go-experiment/blob/master/_research/PG-frame40.png)](https://youtu.be/wRD4F9hmrOc)  
+*video introduction*
 
 ##WORK IN PROGRESS NOTES
 
@@ -37,11 +37,8 @@ support webgl.
 
 
 
+##ezAR Docs and Tech Support
+See [ezartech.com](http://ezartech.com) for documentation and support.
 
-Resources  (TODO)
-todo - provide detailed list of resources & their licenses
 
-pokemon_sprite.jpg - <license here> 
-
-pokemon go theme -
-https://soundcloud.com/akirathedon/pokemon-go-walking-map-theme-peakwave-remix
+Copyright (c) 2015-2016, ezAR Technologies
