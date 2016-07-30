@@ -35,7 +35,8 @@ on successfully. For the near term, please don't contact me reporting the demo
 doesn't work on your android device or versions of iOS older than 8.0 that do not 
 support webgl.  
 
-
+##Build##
+todo
 
 ##ezAR Docs and Tech Support
 See [ezartech.com](http://ezartech.com) for documentation and support.
